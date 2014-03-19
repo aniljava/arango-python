@@ -32,22 +32,26 @@ def safe_request(func):
 
 
 class Urllib2Client(RequestsBase):
+
     """
     If no PyCURL bindings available or
     client forced by hands. Quite useful for PyPy.
     """
     _config = {}
     encoding = "utf-8"
+    headers = {}
 
-    @classmethod
-    def config(cls, encoding=None, **kwargs):
-        cls._config.update(kwargs)
+    def updateauth(self, req):
+        if self.headers.get('Authorization', None):
+            req.add_header('Authorization', self.headers['Authorization'])
+
+    def config(self, encoding=None, **kwargs):
+        self._config.update(kwargs)
 
         if encoding is not None:
-            cls.encoding = encoding
+            self.encoding = encoding
 
-    @classmethod
-    def parse_response(cls, r, content=None):
+    def parse_response(self, r, content=None):
         headers = {}
 
         if "dict" in r.headers.__dict__:
@@ -56,57 +60,58 @@ class Urllib2Client(RequestsBase):
             # Python3
             headers.update(dict(r.headers.raw_items()))
 
-        content = content.decode(cls.encoding)
-        return cls.build_response(r.code, r.msg, headers, content)
+        content = content.decode(self.encoding)
+        return self.build_response(r.code, r.msg, headers, content)
 
-    @classmethod
     @safe_request
-    def get(cls, url, **kwargs):
-        response = urlopen(url)
+    def get(self, url, **kwargs):
+        req = Request(url)
+        self.updateauth(req)
+        response = urlopen(req)
         content = response.read()
         response.close()
-        return cls.parse_response(response, content=content)
+        return self.parse_response(response, content=content)
 
-    @classmethod
     @safe_request
-    def post(cls, url, data=None):
+    def post(self, url, data=None):
         if data is None:
             data = ""
 
         req = Request(url)
+        self.updateauth(req)
         req.add_header('Content-Type', 'application/json')
-        req.add_data(data.encode(cls.encoding))
+        req.add_data(data.encode(self.encoding))
 
-        response = urlopen(req, **cls._config)
+        response = urlopen(req, **self._config)
         content = response.read()
         response.close()
 
-        return cls.parse_response(response, content=content)
+        return self.parse_response(response, content=content)
 
-    @classmethod
     @safe_request
-    def put(cls, url, data=None):
+    def put(self, url, data=None):
         if data is None:
             data = ""
 
         req = Request(url)
+        self.updateauth(req)
         req.add_header('Content-Type', 'application/json')
-        req.add_data(data.encode(cls.encoding))
+        req.add_data(data.encode(self.encoding))
         req.get_method = lambda: "put"
         response = urlopen(req)
 
         content = response.read()
         response.close()
 
-        return cls.parse_response(response, content=content)
+        return self.parse_response(response, content=content)
 
-    @classmethod
     @safe_request
-    def delete(cls, url, data=None):
+    def delete(self, url, data=None):
         req = Request(url)
+        self.updateauth(req)
         req.get_method = lambda: "delete"
         response = urlopen(req)
         content = response.read()
         response.close()
 
-        return cls.parse_response(response, content=content)
+        return self.parse_response(response, content=content)
