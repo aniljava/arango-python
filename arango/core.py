@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 class ArangoVersion(object):
+
     def __init__(self, data):
         self.__dict__.update(data)
 
@@ -29,6 +30,7 @@ class ArangoVersion(object):
 
 
 class Connection(object):
+
     """Connetion to ArangoDB
     """
 
@@ -44,8 +46,8 @@ class Connection(object):
     )
 
     def __init__(self, host="localhost",
-                 port=8529, is_https=False,
-                 client=None, db=None, **kwargs):
+                 port=8529, is_https=False, client=None, db=None,
+                 username=None, password=None, **kwargs):
         """
          - ``client`` - this param provide ability
            to customize HTTP client
@@ -58,6 +60,12 @@ class Connection(object):
         self._collection = None
         self._database_name = db
         self._database = None
+
+        # attr check to ensure old custom clients still works.
+        if hasattr(self.client, 'headers') and username:
+            auth = base64.encodestring(
+                "{}:{}".format(username, password or ''))[:-1]
+            self.client.headers['Authorization'] = "Basic {}".format(auth)
 
     def __getattr__(self, name):
         """Handling different http methods and wrap requests
@@ -179,10 +187,12 @@ class Connection(object):
 
 
 class Response(dict):
+
     """
     Representation of HTTP response with
     additional fields to make response more readable.
     """
+
     def __init__(self, url, response, args=None, expect_raw=False):
         self.url = url
         self.response = response
@@ -228,6 +238,7 @@ class Response(dict):
 
 
 class Resultset(object):
+
     def __init__(self, base, *args, **kwargs):
         self._args = args
         self._kwargs = kwargs
@@ -326,6 +337,7 @@ class Resultset(object):
 
 
 class RequestChunk(object):
+
     """
     Chunk of multiple/batched request. Real request should
     contain "chunks" which contain small post requests.
