@@ -12,61 +12,66 @@ __all__ = ("RequestsClient",)
 
 logger = logging.getLogger("arango.requests")
 
-sess = requests.Session()
-
 
 class RequestsClient(RequestsBase):
+
     """
     If no PyCURL bindings available or
     client forced by hands. Quite useful for PyPy.
     """
     _config = {}
+    headers = {}
+    sess = requests.Session()
 
-    @classmethod
-    def config(cls, **kwargs):
-        cls._config.update(kwargs)
+    def updateauth(self):
+        if self.headers.get('Authorization', None):
+            self.sess.headers.update(
+                {'Authorization': self.headers['Authorization']})
 
-    @classmethod
-    def get(cls, url, **kwargs):
-        r = sess.get(url, **cls._config)
+    def config(self, **kwargs):
+        self._config.update(kwargs)
 
-        return cls.build_response(
+    def get(self, url, **kwargs):
+        self.updateauth()
+        r = self.sess.get(url, **self._config)
+
+        return self.build_response(
             r.status_code,
             r.reason,
             r.headers,
             r.text)
 
-    @classmethod
-    def post(cls, url, data=None):
+    def post(self, url, data=None):
+        self.updateauth()
         if data is None:
             data = ""
 
-        r = sess.post(url, data=data, **cls._config)
+        r = self.sess.post(url, data=data, **self._config)
 
-        return cls.build_response(
+        return self.build_response(
             r.status_code,
             r.reason,
             r.headers,
             r.text)
 
-    @classmethod
-    def put(cls, url, data=None):
+    def put(self, url, data=None):
+        self.updateauth()
         if data is None:
             data = ""
 
-        r = sess.put(url, data=data, **cls._config)
+        r = self.sess.put(url, data=data, **self._config)
 
-        return cls.build_response(
+        return self.build_response(
             r.status_code,
             r.reason,
             r.headers,
             r.text)
 
-    @classmethod
-    def delete(cls, url, data=None):
-        r = sess.delete(url, **cls._config)
+    def delete(self, url, data=None):
+        self.updateauth()
+        r = self.sess.delete(url, **self._config)
 
-        return cls.build_response(
+        return self.build_response(
             r.status_code,
             r.reason,
             r.headers,
