@@ -19,13 +19,12 @@ def performer(func):
     """
     def wrap(cls, *args, **kwargs):
         client, buf = func(cls, *args, **kwargs)
-
-        return PyCurlClient.build_response(
-            *PyCurlClient.perform(client, buf))
+        return PyCurlClient.build_response(*PyCurlClient.perform(client, buf))
     return wrap
 
 
 class PyCurlClient(RequestsBase):
+
     """
     PyCURL-based HTTP client
     """
@@ -33,24 +32,27 @@ class PyCurlClient(RequestsBase):
     IPRESOLVE = pycurl.IPRESOLVE_V4
 
     encoding = "utf-8"
+    headers = {}
 
-    @classmethod
-    def client(cls, url):
-        client = pycurl.Curl()
+    def client(self, url):
+        pc = pycurl.Curl()
+
         buf = StringIO.StringIO()
 
-        if cls.DEBUG:
-            client.setopt(pycurl.VERBOSE, True)
+        if self.DEBUG:
+            pc.setopt(pycurl.VERBOSE, True)
 
         # TODO: do not attempt to connect via IPv6
         # XXX: NEED TO BE CONFIGURABLE!!!
-        client.setopt(pycurl.IPRESOLVE, cls.IPRESOLVE)
-        client.setopt(pycurl.URL, url)
-        client.setopt(pycurl.HEADER, 1)
-        client.setopt(pycurl.NOSIGNAL, 1)
-        client.setopt(pycurl.WRITEFUNCTION, buf.write)
-
-        return client, buf
+        pc.setopt(pycurl.IPRESOLVE, self.IPRESOLVE)
+        pc.setopt(pycurl.URL, url)
+        pc.setopt(pycurl.HEADER, 1)
+        pc.setopt(pycurl.NOSIGNAL, 1)
+        pc.setopt(pycurl.WRITEFUNCTION, buf.write)
+        if self.headers.get('Authorization', None):
+            pc.setopt(
+                pycurl.HTTPHEADER, ['Authorization: ' + self.headers['Authorization']])
+        return pc, buf
 
     @classmethod
     def perform(cls, client, buf):
@@ -76,38 +78,34 @@ class PyCurlClient(RequestsBase):
         proto, status, message = status.split(" ", 2)
         return int(status), message, headers, body
 
-    @classmethod
     @performer
-    def get(cls, url):
-        return cls.client(url)
+    def get(self, url):
+        return self.client(url)
 
-    @classmethod
     @performer
-    def post(cls, url, data=None):
-        client, buf = cls.client(url)
+    def post(self, url, data=None):
+        client, buf = self.client(url)
 
         client.setopt(pycurl.POST, True)
         data = data or ""
-        client.setopt(pycurl.POSTFIELDS, data.encode(cls.encoding))
+        client.setopt(pycurl.POSTFIELDS, data.encode(self.encoding))
 
         return client, buf
 
-    @classmethod
     @performer
-    def delete(cls, url, data=None):
-        client, buf = cls.client(url)
+    def delete(self, url, data=None):
+        client, buf = self.client(url)
 
         client.setopt(pycurl.CUSTOMREQUEST, 'delete')
 
         return client, buf
 
-    @classmethod
     @performer
-    def put(cls, url, data=None):
+    def put(self, url, data=None):
         data = data or ""
 
-        content = StringIO.StringIO(data.encode(cls.encoding))
-        client, buf = cls.client(url)
+        content = StringIO.StringIO(data.encode(self.encoding))
+        client, buf = self.client(url)
 
         client.setopt(pycurl.PUT, True)
         client.setopt(pycurl.UPLOAD, True)
